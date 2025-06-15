@@ -107,10 +107,37 @@ fi
 root_path = os.getenv("GRADIO_ROOT_PATH", "")
 
 echo "Patching wgp.py for RunPod proxy compatibility..."
-sed -i 's/demo.launch(server_name=server_name, server_port=server_port, share=args.share, allowed_paths=\[save_path\])/demo.launch(server_name=server_name, server_port=server_port, share=args.share, allowed_paths=[save_path], root_path=os.getenv("GRADIO_ROOT_PATH", ""))/g' wgp.py
+if ! grep -q "root_path=" wgp.py; then
+    cp wgp.py wgp.py.backup
+
+    # Use Python to patch the file more reliably
+    python3 << 'EOF'
+import re
+
+# Read the original file
+with open('wgp.py', 'r') as f:
+    content = f.read()
+
+# Find the launch call and replace it
+old_pattern = r'demo\.launch\(server_name=server_name,\s*server_port=server_port,\s*share=args\.share,\s*allowed_paths=\[save_path\]\)'
+new_launch = 'demo.launch(server_name=server_name, server_port=server_port, share=args.share, allowed_paths=[save_path], root_path=os.getenv("GRADIO_ROOT_PATH", ""))'
+
+# Replace the pattern
+content = re.sub(old_pattern, new_launch, content)
+
+# Write back to file
+with open('wgp.py', 'w') as f:
+    f.write(content)
+
+print("✅ wgp.py patched successfully")
+EOF
+else
+    echo "✅ wgp.py already patched"
+fi
+
 # Start Wan2GP
-echo "▶️  Starting Wan2GP with args: ${WGP_ARGS[*]}"
-nohup python wgp.py "${WGP_ARGS[@]}" > "$NETWORK_VOLUME/wan2gp_${RUNPOD_POD_ID}_nohup.log" 2>&1 &
+echo "▶️  Starting Wan2GP with RunPod proxy support"
+nohup python wgp.py ${ATTENTION_MODE:+$ATTENTION_MODE} > "$NETWORK_VOLUME/wan2gp_${RUNPOD_POD_ID}_nohup.log" 2>&1 &
 
 # Wait for Wan2GP to start
 until curl --silent --fail "$URL" --output /dev/null; do
