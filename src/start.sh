@@ -104,6 +104,10 @@ WGP_ARGS=(
 if [ -n "$ATTENTION_MODE" ]; then
   WGP_ARGS+=("$ATTENTION_MODE")
 fi
+root_path = os.getenv("GRADIO_ROOT_PATH", "")
+
+echo "Patching wgp.py for RunPod proxy compatibility..."
+sed -i 's/demo.launch(server_name=server_name, server_port=server_port, share=args.share, allowed_paths=\[save_path\])/demo.launch(server_name=server_name, server_port=server_port, share=args.share, allowed_paths=[save_path], root_path=os.getenv("GRADIO_ROOT_PATH", ""))/g' wgp.py
 # Start Wan2GP
 echo "▶️  Starting Wan2GP with args: ${WGP_ARGS[*]}"
 nohup python wgp.py "${WGP_ARGS[@]}" > "$NETWORK_VOLUME/wan2gp_${RUNPOD_POD_ID}_nohup.log" 2>&1 &
