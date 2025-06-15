@@ -73,7 +73,7 @@ if [ -n "$BUILD_PID" ]; then
         sleep 10
     done
     echo "SageAttention build complete"
-    ATTENTION_MODE="--attention=sage"
+    ATTENTION_MODE="--attention=sage2"
 fi
 
 echo "SageAttention build complete"
