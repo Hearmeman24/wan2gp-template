@@ -104,7 +104,6 @@ WGP_ARGS=(
 if [ -n "$ATTENTION_MODE" ]; then
   WGP_ARGS+=("$ATTENTION_MODE")
 fi
-root_path = os.getenv("GRADIO_ROOT_PATH", "")
 
 echo "Patching wgp.py for RunPod proxy compatibility..."
 if ! grep -q "root_path=" wgp.py; then
