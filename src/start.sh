@@ -25,31 +25,25 @@ else
 fi
 
 if [ "${BUILD_SAGE_ATTENTION:-true}" = "true" ]; then
-    echo "Building SageAttention in the background for conda (BUILD_SAGE_ATTENTION=${BUILD_SAGE_ATTENTION})"
-    (
-      # Ensure conda environment is activated in subshell
-      source /opt/conda/etc/profile.d/conda.sh
-      conda activate wan2gp
+    echo "Installing SageAttention..."
+    cd /tmp
+    git clone https://github.com/thu-ml/SageAttention.git
+    cd SageAttention
+    pip install -e .
+    pip install --no-cache-dir triton
 
-      cd /tmp || exit 1
-      git clone https://github.com/thu-ml/SageAttention.git
-      cd SageAttention || exit 1
-      pip install -e .
-      pip install --no-cache-dir triton
+    if python -c "import sageattention" 2>/dev/null; then
+        echo "✅ SageAttention installed successfully"
+        ATTENTION_MODE="--attention=sage2"
+    else
+        echo "❌ SageAttention installation failed"
+        ATTENTION_MODE=""
+    fi
 
-      # Test the installation
-      if python -c "import sageattention" 2>/dev/null; then
-          echo "✅ SageAttention installed successfully"
-      else
-          echo "❌ SageAttention installation failed"
-      fi
-    ) &> /var/log/sage_build.log &
-
-    BUILD_PID=$!
-    echo "Background build started (PID: $BUILD_PID)"
+    cd "$NETWORK_VOLUME/Wan2GP" || cd "/workspace/Wan2GP"
 else
-    echo "Skipping SageAttention build (BUILD_SAGE_ATTENTION=${BUILD_SAGE_ATTENTION})"
-    BUILD_PID=""
+    echo "Skipping SageAttention build"
+    ATTENTION_MODE=""
 fi
 
 # Set the network volume path
@@ -76,29 +70,6 @@ if [ ! -f "/usr/local/bin/download_with_aria.py" ]; then
 else
     echo "CivitAI download script already exists"
 fi
-
-# Wait for SageAttention build to complete
-if [ -n "$BUILD_PID" ]; then
-    while kill -0 "$BUILD_PID" 2>/dev/null; do
-        echo "🛠️ Building SageAttention in progress... (this can take around 5 minutes)"
-        sleep 10
-    done
-    echo "SageAttention build complete"
-
-    # Check if SageAttention is actually available
-    if python -c "import sageattention" 2>/dev/null; then
-        echo "✅ SageAttention detected, using sage2 attention mode"
-        ATTENTION_MODE="--attention=sage2"
-    else
-        echo "❌ SageAttention not available, using default attention"
-        ATTENTION_MODE=""
-    fi
-else
-    echo "SageAttention build skipped"
-    ATTENTION_MODE=""
-fi
-
-echo "SageAttention build complete"
 
 # Navigate to Wan2GP directory
 cd "$NETWORK_VOLUME/Wan2GP" || cd "/workspace/Wan2GP" || {
