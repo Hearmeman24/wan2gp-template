@@ -25,14 +25,25 @@ else
 fi
 
 if [ "${BUILD_SAGE_ATTENTION:-true}" = "true" ]; then
-    echo "Building SageAttention in the background (BUILD_SAGE_ATTENTION=${BUILD_SAGE_ATTENTION})"
+    echo "Building SageAttention in the background for conda (BUILD_SAGE_ATTENTION=${BUILD_SAGE_ATTENTION})"
     (
+      # Ensure conda environment is activated in subshell
+      source /opt/conda/etc/profile.d/conda.sh
+      conda activate wan2gp
+
       cd /tmp || exit 1
       git clone https://github.com/thu-ml/SageAttention.git
       cd SageAttention || exit 1
       pip install -e .
       pip install --no-cache-dir triton
-    ) &> /var/log/sage_build.log &      # run in background, log output
+
+      # Test the installation
+      if python -c "import sageattention" 2>/dev/null; then
+          echo "✅ SageAttention installed successfully"
+      else
+          echo "❌ SageAttention installation failed"
+      fi
+    ) &> /var/log/sage_build.log &
 
     BUILD_PID=$!
     echo "Background build started (PID: $BUILD_PID)"
@@ -73,7 +84,18 @@ if [ -n "$BUILD_PID" ]; then
         sleep 10
     done
     echo "SageAttention build complete"
-    ATTENTION_MODE="--attention=sage2"
+
+    # Check if SageAttention is actually available
+    if python -c "import sageattention" 2>/dev/null; then
+        echo "✅ SageAttention detected, using sage2 attention mode"
+        ATTENTION_MODE="--attention=sage2"
+    else
+        echo "❌ SageAttention not available, using default attention"
+        ATTENTION_MODE=""
+    fi
+else
+    echo "SageAttention build skipped"
+    ATTENTION_MODE=""
 fi
 
 echo "SageAttention build complete"
