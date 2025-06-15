@@ -77,7 +77,7 @@ cd "$NETWORK_VOLUME/Wan2GP" || cd "/workspace/Wan2GP" || {
 
 # Start Wan2GP
 echo "▶️  Starting Wan2GP"
-nohup python wgp.py > "$NETWORK_VOLUME/wan2gp_${RUNPOD_POD_ID}_nohup.log" 2>&1 &
+nohup python wgp.py --listen > "$NETWORK_VOLUME/wan2gp_${RUNPOD_POD_ID}_nohup.log" 2>&1 &
 
 # Wait for Wan2GP to start
 until curl --silent --fail "$URL" --output /dev/null; do
