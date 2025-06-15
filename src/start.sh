@@ -73,6 +73,7 @@ if [ -n "$BUILD_PID" ]; then
         sleep 10
     done
     echo "SageAttention build complete"
+    ATTENTION_MODE="--attention=sage"
 fi
 
 echo "SageAttention build complete"
@@ -116,19 +117,6 @@ GRADIO_PATCH_EOF
     echo "Gradio patched successfully"
 else
     echo "Gradio already patched or file not found"
-fi
-
-ATTENTION_MODE=""
-if [ "${BUILD_SAGE_ATTENTION:-true}" = "true" ]; then
-    # Check if SageAttention was successfully built
-    if python -c "import sageattention" 2>/dev/null; then
-        echo "SageAttention detected, using sage attention mode"
-        ATTENTION_MODE="--attention=sage"
-    else
-        echo "SageAttention build failed or not available, using default attention"
-    fi
-else
-    echo "Using default attention mode (SageAttention disabled)"
 fi
 
 WGP_ARGS=(
