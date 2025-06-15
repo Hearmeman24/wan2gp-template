@@ -10,10 +10,6 @@ export LD_PRELOAD="${TCMALLOC}"
 
 URL="127.0.0.1:7860"
 
-export GRADIO_SERVER_NAME="0.0.0.0"
-export GRADIO_SERVER_PORT="7860"
-export GRADIO_ROOT_PATH="/proxy/7860"
-
 if ! which aria2 > /dev/null 2>&1; then
     echo "Installing aria2..."
     apt-get update && apt-get install -y aria2
@@ -28,17 +24,22 @@ else
     echo "curl is already installed"
 fi
 
-echo "Building SageAttention in the background"
-(
-  cd /tmp || exit 1
-  git clone https://github.com/thu-ml/SageAttention.git
-  cd SageAttention || exit 1
-  pip install -e .
-  pip install --no-cache-dir triton
-) &> /var/log/sage_build.log &      # run in background, log output
+if [ "${BUILD_SAGE_ATTENTION:-true}" = "true" ]; then
+    echo "Building SageAttention in the background (BUILD_SAGE_ATTENTION=${BUILD_SAGE_ATTENTION})"
+    (
+      cd /tmp || exit 1
+      git clone https://github.com/thu-ml/SageAttention.git
+      cd SageAttention || exit 1
+      pip install -e .
+      pip install --no-cache-dir triton
+    ) &> /var/log/sage_build.log &      # run in background, log output
 
-BUILD_PID=$!
-echo "Background build started (PID: $BUILD_PID)"
+    BUILD_PID=$!
+    echo "Background build started (PID: $BUILD_PID)"
+else
+    echo "Skipping SageAttention build (BUILD_SAGE_ATTENTION=${BUILD_SAGE_ATTENTION})"
+    BUILD_PID=""
+fi
 
 # Set the network volume path
 NETWORK_VOLUME="/workspace"
@@ -66,10 +67,13 @@ else
 fi
 
 # Wait for SageAttention build to complete
-while kill -0 "$BUILD_PID" 2>/dev/null; do
-    echo "🛠️ Building SageAttention in progress... (this can take around 5 minutes)"
-    sleep 10
-done
+if [ -n "$BUILD_PID" ]; then
+    while kill -0 "$BUILD_PID" 2>/dev/null; do
+        echo "🛠️ Building SageAttention in progress... (this can take around 5 minutes)"
+        sleep 10
+    done
+    echo "SageAttention build complete"
+fi
 
 echo "SageAttention build complete"
 
@@ -79,9 +83,30 @@ cd "$NETWORK_VOLUME/Wan2GP" || cd "/workspace/Wan2GP" || {
     exit 1
 }
 
+ATTENTION_MODE=""
+if [ "${BUILD_SAGE_ATTENTION:-true}" = "true" ]; then
+    # Check if SageAttention was successfully built
+    if python -c "import sageattention" 2>/dev/null; then
+        echo "SageAttention detected, using sage attention mode"
+        ATTENTION_MODE="--attention=sage"
+    else
+        echo "SageAttention build failed or not available, using default attention"
+    fi
+else
+    echo "Using default attention mode (SageAttention disabled)"
+fi
+
+WGP_ARGS=(
+    "--server-name=0.0.0.0"
+    "--server-port=7860"
+)
+
+if [ -n "$ATTENTION_MODE" ]; then
+  WGP_ARGS+=("$ATTENTION_MODE")
+fi
 # Start Wan2GP
-echo "▶️  Starting Wan2GP"
-nohup python wgp.py --listen --attention sage > "$NETWORK_VOLUME/wan2gp_${RUNPOD_POD_ID}_nohup.log" 2>&1 &
+echo "▶️  Starting Wan2GP with args: ${WGP_ARGS[*]}"
+nohup python wgp.py "${WGP_ARGS[@]}" > "$NETWORK_VOLUME/wan2gp_${RUNPOD_POD_ID}_nohup.log" 2>&1 &
 
 # Wait for Wan2GP to start
 until curl --silent --fail "$URL" --output /dev/null; do
