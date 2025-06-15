@@ -136,7 +136,7 @@ fi
 
 # Start Wan2GP
 echo "▶️  Starting Wan2GP with RunPod proxy support"
-nohup python wgp.py ${ATTENTION_MODE:+$ATTENTION_MODE} > "$NETWORK_VOLUME/wan2gp_${RUNPOD_POD_ID}_nohup.log" 2>&1 &
+nohup python wgp.py --listen ${ATTENTION_MODE:+$ATTENTION_MODE} > "$NETWORK_VOLUME/wan2gp_${RUNPOD_POD_ID}_nohup.log" 2>&1 &
 
 # Wait for Wan2GP to start
 until curl --silent --fail "$URL" --output /dev/null; do
