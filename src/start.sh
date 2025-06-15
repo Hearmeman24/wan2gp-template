@@ -83,6 +83,41 @@ cd "$NETWORK_VOLUME/Wan2GP" || cd "/workspace/Wan2GP" || {
     exit 1
 }
 
+# Patch Gradio for RunPod compatibility
+echo "Patching Gradio for RunPod proxy compatibility..."
+GRADIO_ROUTE_UTILS="/opt/conda/envs/wan2gp/lib/python3.10/site-packages/gradio/route_utils.py"
+
+if [ -f "$GRADIO_ROUTE_UTILS" ] && ! grep -q "runpod.net" "$GRADIO_ROUTE_UTILS"; then
+    cp "$GRADIO_ROUTE_UTILS" "$GRADIO_ROUTE_UTILS.backup"
+
+    python3 << 'GRADIO_PATCH_EOF'
+import re
+
+gradio_file = "/opt/conda/envs/wan2gp/lib/python3.10/site-packages/gradio/route_utils.py"
+
+with open(gradio_file, 'r') as f:
+    content = f.read()
+
+# Replace the ValueError line with RunPod-aware logic
+old_line = "raise ValueError(f\"Request url '{root_url}' has an unkown api call pattern.\")"
+new_lines = """# Handle RunPod proxy URLs
+    if ".proxy.runpod.net" in root_url:
+        return "/api/predict"
+    raise ValueError(f"Request url '{root_url}' has an unkown api call pattern.")"""
+
+content = content.replace(old_line, new_lines)
+
+with open(gradio_file, 'w') as f:
+    f.write(content)
+
+print("✅ Patched Gradio route_utils.py for RunPod")
+GRADIO_PATCH_EOF
+
+    echo "Gradio patched successfully"
+else
+    echo "Gradio already patched or file not found"
+fi
+
 ATTENTION_MODE=""
 if [ "${BUILD_SAGE_ATTENTION:-true}" = "true" ]; then
     # Check if SageAttention was successfully built
