@@ -10,6 +10,10 @@ export LD_PRELOAD="${TCMALLOC}"
 
 URL="127.0.0.1:7860"
 
+export GRADIO_SERVER_NAME="0.0.0.0"
+export GRADIO_SERVER_PORT="7860"
+export GRADIO_ROOT_PATH="/proxy/7860"
+
 if ! which aria2 > /dev/null 2>&1; then
     echo "Installing aria2..."
     apt-get update && apt-get install -y aria2
@@ -77,7 +81,7 @@ cd "$NETWORK_VOLUME/Wan2GP" || cd "/workspace/Wan2GP" || {
 
 # Start Wan2GP
 echo "▶️  Starting Wan2GP"
-nohup python wgp.py --listen > "$NETWORK_VOLUME/wan2gp_${RUNPOD_POD_ID}_nohup.log" 2>&1 &
+nohup python wgp.py --listen --attention sage > "$NETWORK_VOLUME/wan2gp_${RUNPOD_POD_ID}_nohup.log" 2>&1 &
 
 # Wait for Wan2GP to start
 until curl --silent --fail "$URL" --output /dev/null; do
