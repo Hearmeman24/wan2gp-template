@@ -14,6 +14,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         libgl1 libglib2.0-0 build-essential gcc && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install pyyaml triton jupyterlab jupyterlab-lsp \
+        jupyter-server jupyter-server-terminals \
+        ipykernel jupyterlab_code_formatter
+
 # Install Miniconda
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
     bash /tmp/miniconda.sh -b -p /opt/conda && \
